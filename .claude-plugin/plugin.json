@@ -1,0 +1,1 @@
+{ "name": "recent-sessions", "version": "0.1.0", "description": "Right-side pane listing Claude Code sessions active in the last hour", "types": "./types/index.d.ts" }
