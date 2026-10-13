@@ -34,9 +34,9 @@ There is one command:
 
 | Command | What it does |
 | --- | --- |
-| `/sessions` | Scans for sessions right away, opens the Sessions pane (or brings it back if you closed it), and replies with how many sessions are listed. |
+| `/sessions` | Toggles the Sessions pane. If the pane is on screen, it closes it. Otherwise it scans for sessions right away, opens the pane, and replies with how many sessions are listed. |
 
-You rarely need it: the pane opens by itself when a session starts and refreshes itself every minute. Use it after closing the pane, or when you want the list brought up to date without waiting.
+The pane opens by itself when a session starts and refreshes itself every minute. Use `/sessions` to hide it, and again to bring it back with a fresh list.
 
 ## Install
 

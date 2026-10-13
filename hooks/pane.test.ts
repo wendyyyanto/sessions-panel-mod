@@ -82,6 +82,7 @@ test('waiting, running and finished sessions each get their section', async (eng
   on('session.id', async () => ({ value: 'b2' }))
   on('config.list', async () => ({ value: [{ key: 'theme', value: 'dark' }] }) as never)
   on('ui.open', async () => ({ value: { isPlaced: true } }))
+  on('ui.panes', async () => ({ value: [] }) as never)
   const dir = (name: string) => ({ name, kind: 'dir' as const, size: 0, mtimeMs: 0, isLink: false })
   const file = (name: string, size: number, mtimeMs: number) => ({ name, kind: 'file' as const, size, mtimeMs, isLink: false })
   on('fs.list', async (_$, e) => {
@@ -298,6 +299,7 @@ test('a session whose turn ended drops out of Working now into the default list'
   mock.env(on, { USERPROFILE: 'C:/h', APPDATA: 'C:/a' })
   on('session.id', async () => ({ value: 'nobody' }))
   on('ui.open', async () => ({ value: { isPlaced: true } }))
+  on('ui.panes', async () => ({ value: [] }) as never)
   on('fs.list', async (_$, e) => {
     const dir = (name: string) => ({ name, kind: 'dir' as const, size: 0, mtimeMs: 0, isLink: false })
     const file = (name: string, size: number, mtimeMs: number) => ({ name, kind: 'file' as const, size, mtimeMs, isLink: false })
@@ -342,6 +344,7 @@ test('a session leaves Waiting for response once the person answers', async (eng
   mock.env(on, { USERPROFILE: 'C:/h', APPDATA: 'C:/a' })
   on('session.id', async () => ({ value: 'nobody' }))
   on('ui.open', async () => ({ value: { isPlaced: true } }))
+  on('ui.panes', async () => ({ value: [] }) as never)
   on('fs.list', async (_$, e) => {
     const dir = (name: string) => ({ name, kind: 'dir' as const, size: 0, mtimeMs: 0, isLink: false })
     const file = (name: string, size: number, mtimeMs: number) => ({ name, kind: 'file' as const, size, mtimeMs, isLink: false })
@@ -391,6 +394,7 @@ test('the spinner advances while a session is running', async (eng, on) => {
   mock.env(on, { USERPROFILE: 'C:/h', APPDATA: 'C:/a' })
   on('session.id', async () => ({ value: 'nobody' }))
   on('ui.open', async () => ({ value: { isPlaced: true } }))
+  on('ui.panes', async () => ({ value: [] }) as never)
   on('command.register', async () => ({ value: undefined }) as never)
   on('session.start', async (_$, e) => e)
   on('fs.list', async (_$, e) => {
@@ -442,6 +446,7 @@ test('with nothing in the last hour, only the Offline section lists sessions', a
   mock.env(on, { USERPROFILE: 'C:/h', APPDATA: 'C:/a' })
   on('session.id', async () => ({ value: 'nobody' }))
   on('ui.open', async () => ({ value: { isPlaced: true } }))
+  on('ui.panes', async () => ({ value: [] }) as never)
   on('fs.list', async (_$, e) => {
     const dir = (name: string) => ({ name, kind: 'dir' as const, size: 0, mtimeMs: 0, isLink: false })
     const file = (name: string, size: number, mtimeMs: number) => ({ name, kind: 'file' as const, size, mtimeMs, isLink: false })
@@ -490,6 +495,7 @@ test('a resumed session is listed once, and sessions without a real title are no
   mock.env(on, { USERPROFILE: 'C:/h', APPDATA: 'C:/a' })
   on('session.id', async () => ({ value: 'nobody' }))
   on('ui.open', async () => ({ value: { isPlaced: true } }))
+  on('ui.panes', async () => ({ value: [] }) as never)
   on('fs.list', async (_$, e) => {
     const dir = (name: string) => ({ name, kind: 'dir' as const, size: 0, mtimeMs: 0, isLink: false })
     const file = (name: string, size: number, mtimeMs: number) => ({ name, kind: 'file' as const, size, mtimeMs, isLink: false })
@@ -562,6 +568,7 @@ test('a single session in a section reads as 1 session', async (eng, on) => {
   mock.env(on, { USERPROFILE: 'C:/h', APPDATA: 'C:/a' })
   on('session.id', async () => ({ value: 'nobody' }))
   on('ui.open', async () => ({ value: { isPlaced: true } }))
+  on('ui.panes', async () => ({ value: [] }) as never)
   on('fs.list', async (_$, e) => {
     const dir = (name: string) => ({ name, kind: 'dir' as const, size: 0, mtimeMs: 0, isLink: false })
     const file = (name: string, size: number, mtimeMs: number) => ({ name, kind: 'file' as const, size, mtimeMs, isLink: false })
@@ -609,6 +616,7 @@ test('on a light theme the cards keep their coloured borders but get no tint', a
   mock.env(on, { USERPROFILE: 'C:/h', APPDATA: 'C:/a' })
   on('session.id', async () => ({ value: 'nobody' }))
   on('ui.open', async () => ({ value: { isPlaced: true } }))
+  on('ui.panes', async () => ({ value: [] }) as never)
   on('config.list', async () => ({ value: [{ key: 'theme', value: 'light' }] }) as never)
   on('fs.list', async (_$, e) => {
     const dir = (name: string) => ({ name, kind: 'dir' as const, size: 0, mtimeMs: 0, isLink: false })
@@ -661,6 +669,7 @@ test('each section folds on its own arrow, and every choice is remembered', asyn
   })
   on('session.id', async () => ({ value: 'nobody' }))
   on('ui.open', async () => ({ value: { isPlaced: true } }))
+  on('ui.panes', async () => ({ value: [] }) as never)
   on('fs.list', async (_$, e) => {
     const dir = (name: string) => ({ name, kind: 'dir' as const, size: 0, mtimeMs: 0, isLink: false })
     const file = (name: string, size: number, mtimeMs: number) => ({ name, kind: 'file' as const, size, mtimeMs, isLink: false })
@@ -763,6 +772,7 @@ test('saved choices are restored in the next session, including the older Offlin
   mock.store(on, { collapsedSections: { waiting: true, bogus: true, running: true }, offlineCollapsed: true })
   on('session.id', async () => ({ value: 'nobody' }))
   on('ui.open', async () => ({ value: { isPlaced: true } }))
+  on('ui.panes', async () => ({ value: [] }) as never)
   on('command.register', async () => ({ value: undefined }) as never)
   on('session.start', async (_$, e) => e)
   on('fs.list', async (_$, e) => {
@@ -828,6 +838,7 @@ test('a folded Recent section keeps its header even when it is the only section'
   mock.store(on, { collapsedSections: { done: true } })
   on('session.id', async () => ({ value: 'nobody' }))
   on('ui.open', async () => ({ value: { isPlaced: true } }))
+  on('ui.panes', async () => ({ value: [] }) as never)
   on('command.register', async () => ({ value: undefined }) as never)
   on('session.start', async (_$, e) => e)
   on('fs.list', async (_$, e) => {
@@ -880,6 +891,7 @@ test('a running session too big to read has no start time, so it says plain "run
   mock.env(on, { USERPROFILE: 'C:/h', APPDATA: 'C:/a' })
   on('session.id', async () => ({ value: 'nobody' }))
   on('ui.open', async () => ({ value: { isPlaced: true } }))
+  on('ui.panes', async () => ({ value: [] }) as never)
   on('fs.list', async (_$, e) => {
     const dir = (name: string) => ({ name, kind: 'dir' as const, size: 0, mtimeMs: 0, isLink: false })
     const file = (name: string, size: number, mtimeMs: number) => ({ name, kind: 'file' as const, size, mtimeMs, isLink: false })
@@ -921,6 +933,7 @@ test('a session that was only opened is not recent, or running, just because its
   mock.env(on, { USERPROFILE: 'C:/h', APPDATA: 'C:/a' })
   on('session.id', async () => ({ value: 'nobody' }))
   on('ui.open', async () => ({ value: { isPlaced: true } }))
+  on('ui.panes', async () => ({ value: [] }) as never)
   on('fs.list', async (_$, e) => {
     const dir = (name: string) => ({ name, kind: 'dir' as const, size: 0, mtimeMs: 0, isLink: false })
     const file = (name: string, size: number, mtimeMs: number) => ({ name, kind: 'file' as const, size, mtimeMs, isLink: false })
@@ -1006,6 +1019,7 @@ test('running sessions wear Claude\'s main brand orange, the one you are in incl
   // a1 is the session the person is in, and both sessions are mid-turn
   on('session.id', async () => ({ value: 'a1' }))
   on('ui.open', async () => ({ value: { isPlaced: true } }))
+  on('ui.panes', async () => ({ value: [] }) as never)
   on('config.list', async () => ({ value: [{ key: 'theme', value: 'dark' }] }) as never)
   on('fs.list', async (_$, e) => {
     const dir = (name: string) => ({ name, kind: 'dir' as const, size: 0, mtimeMs: 0, isLink: false })
@@ -1083,6 +1097,7 @@ test('a scan that finds nothing new does not repaint the pane', async (eng, on) 
   })
   on('session.id', async () => ({ value: 'nobody' }))
   on('ui.open', async () => ({ value: { isPlaced: true } }))
+  on('ui.panes', async () => ({ value: [] }) as never)
   on('fs.list', async (_$, e) => {
     const dir = (name: string) => ({ name, kind: 'dir' as const, size: 0, mtimeMs: 0, isLink: false })
     const file = (name: string, size: number, mtimeMs: number) => ({ name, kind: 'file' as const, size, mtimeMs, isLink: false })
@@ -1126,6 +1141,7 @@ test('clicking anywhere on a card opens that session, but not the one you are in
   // c9 is the session the person is in
   on('session.id', async () => ({ value: 'c9' }))
   on('ui.open', async () => ({ value: { isPlaced: true } }))
+  on('ui.panes', async () => ({ value: [] }) as never)
   on('fs.list', async (_$, e) => {
     const dir = (name: string) => ({ name, kind: 'dir' as const, size: 0, mtimeMs: 0, isLink: false })
     const file = (name: string, size: number, mtimeMs: number) => ({ name, kind: 'file' as const, size, mtimeMs, isLink: false })
@@ -1229,6 +1245,7 @@ test('on a Mac a click uses the open command', async (eng, on) => {
   })
   on('session.id', async () => ({ value: 'nobody' }))
   on('ui.open', async () => ({ value: { isPlaced: true } }))
+  on('ui.panes', async () => ({ value: [] }) as never)
   on('fs.list', async (_$, e) => {
     const dir = (name: string) => ({ name, kind: 'dir' as const, size: 0, mtimeMs: 0, isLink: false })
     const file = (name: string, size: number, mtimeMs: number) => ({ name, kind: 'file' as const, size, mtimeMs, isLink: false })
@@ -1272,6 +1289,7 @@ test('a click that fails to open tells the person, whether the command ran badly
   })
   on('session.id', async () => ({ value: 'nobody' }))
   on('ui.open', async () => ({ value: { isPlaced: true } }))
+  on('ui.panes', async () => ({ value: [] }) as never)
   on('fs.list', async (_$, e) => {
     const dir = (name: string) => ({ name, kind: 'dir' as const, size: 0, mtimeMs: 0, isLink: false })
     const file = (name: string, size: number, mtimeMs: number) => ({ name, kind: 'file' as const, size, mtimeMs, isLink: false })
@@ -1304,6 +1322,7 @@ test('the time labels move on with each one-minute scan', async (eng, on) => {
   mock.env(on, { USERPROFILE: 'C:/h', APPDATA: 'C:/a' })
   on('session.id', async () => ({ value: 'nobody' }))
   on('ui.open', async () => ({ value: { isPlaced: true } }))
+  on('ui.panes', async () => ({ value: [] }) as never)
   on('command.register', async () => ({ value: undefined }) as never)
   on('session.start', async (_$, e) => e)
   on('fs.list', async (_$, e) => {
@@ -1331,4 +1350,42 @@ test('the time labels move on with each one-minute scan', async (eng, on) => {
   await clock.advance(10_000)
   expect(await find(ui, { text: '6m ago' })).toBeDefined()
   expect(await find(ui, { text: '5m ago' })).toBeUndefined()
+})
+
+// /sessions toggles: a pane on screen closes without a scan; a closed pane, or one waiting
+// undrawn on a narrow terminal, opens. What the engine is asked is noted through globalThis.
+test('/sessions closes the pane when it is on screen and opens it otherwise', async (eng, on) => {
+  mock.clock(on, { now: 1_000_000_000 })
+  mock.env(on, { USERPROFILE: 'C:/h', APPDATA: 'C:/a' })
+  const g = globalThis as unknown as { __panes?: unknown[]; __asked?: string[] }
+  g.__panes = []
+  g.__asked = []
+  const shared = () => globalThis as unknown as { __panes: unknown[]; __asked: string[] }
+  on('session.id', async () => ({ value: 'nobody' }))
+  on('ui.panes', async () => ({ value: shared().__panes }) as never)
+  on('ui.open', async (_$, e) => {
+    shared().__asked.push('open ' + e.id)
+
+    return { value: { isPlaced: true } }
+  })
+  on('ui.close', async (_$, e) => {
+    shared().__asked.push('close ' + e.id)
+
+    return { value: undefined } as never
+  })
+  on('fs.list', async () => ({ value: [] }))
+
+  // closed: it opens
+  expect(JSON.stringify(await eng.command.run({ command: 'sessions', args: '' } as never))).toContain('Sessions pane opened')
+  expect(g.__asked).toEqual(['open recent-sessions'])
+
+  // on screen: it closes, and nothing opens
+  g.__panes = [{ id: 'recent-sessions', title: 'Sessions', isShown: true, isFocused: false, isPlaced: true }]
+  expect(JSON.stringify(await eng.command.run({ command: 'sessions', args: '' } as never))).toContain('Sessions pane closed')
+  expect(g.__asked).toEqual(['open recent-sessions', 'close recent-sessions'])
+
+  // waiting undrawn: it opens, since the person cannot see it
+  g.__panes = [{ id: 'recent-sessions', title: 'Sessions', isShown: true, isFocused: false, isPlaced: false }]
+  expect(JSON.stringify(await eng.command.run({ command: 'sessions', args: '' } as never))).toContain('Sessions pane opened')
+  expect(g.__asked).toEqual(['open recent-sessions', 'close recent-sessions', 'open recent-sessions'])
 })

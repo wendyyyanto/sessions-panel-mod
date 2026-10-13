@@ -164,7 +164,7 @@ export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     await $.command.register({
       name: 'sessions',
-      description: 'Show the sessions active in the last hour in a side pane',
+      description: 'Show or hide the side pane of sessions active in the last hour',
     })
     // the choices made in earlier sessions; unreadable, every section stays unfolded
     const saved = parseFolds(await $.store.get(FOLDS_KEY).catch(() => undefined), await $.store.get(LEGACY_OFFLINE_KEY).catch(() => undefined))
@@ -178,7 +178,13 @@ export const register: Register = on => {
     return next(e)
   })
 
+  // A toggle: a pane on screen closes; one closed, or waiting undrawn on a narrow terminal, opens.
   on('command.run', { command: 'sessions' }, async $ => {
+    if ((await $.ui.panes()).some(pane => pane.id === PANE && pane.isPlaced)) {
+      await $.ui.close({ id: PANE })
+
+      return { text: 'Sessions pane closed.' }
+    }
     await refresh($)
     await $.ui.open({ id: PANE, title: 'Sessions' })
 
