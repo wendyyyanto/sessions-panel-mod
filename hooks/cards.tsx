@@ -12,15 +12,14 @@ const TITLE: Record<Row['status'], string> = {
 const sessions = (n: number) => `${n} ${n === 1 ? 'session' : 'sessions'}`
 
 // `ui` is the surface's element table from $.ui.resolve(e); drawing lives apart from
-// the scan so the tree can be mounted in a test without any files. `frame` advances the
-// spinner of the sessions that are running; `dark` says the theme can carry the card tints;
+// the scan so the tree can be mounted in a test without any files. `dark` says the theme can
+// carry the card tints;
 // `folds` names the sections whose cards are hidden, and pressing a section's arrow calls
 // `onToggle` with it.
 export function Cards(
   { Box, Text, Button, Client }: { Box: any; Text: any; Button: any; Client?: any },
   list: Row[],
   now: number,
-  frame: number,
   dark: boolean,
   folds: Folds,
   onToggle: (section: Row['status']) => void,
@@ -32,15 +31,17 @@ export function Cards(
   // the header counts the last hour only; a waiting session older than that has its own section
   const inHour = list.filter(r => now - r.ranAt <= WINDOW_MS).length
 
-  // A card is a region that can be clicked anywhere on it, to open its session in the app,
-  // where the surface can draw one (the terminal and the desktop; the others have no such
-  // element) and the session has an app id to open. The session the person is already in is
-  // drawn plain: clicking it would open what is open. The card's drawing is the same either way.
+  // A card is a region of its own where the surface can draw one (the terminal and the
+  // desktop; the others have no such element): it turns its own spinner, so a running session
+  // never repaints the pane and its fold arrows. It can be clicked anywhere to open its session
+  // in the app when the session has an app id to open, except the one the person is already in:
+  // clicking it would open what is open. The card's drawing is the same either way; without
+  // regions it is drawn still.
   const card = (r: Row) =>
-    Client && r.appId && !r.isCurrent ? (
-      <Client key={`card-${r.id}`} module="./card-client.tsx" width="100%" props={{ row: r, now, frame, dark }} />
+    Client ? (
+      <Client key={`card-${r.id}`} module="./card-client.tsx" width="100%" props={{ row: r, now, dark, clickable: Boolean(r.appId) && !r.isCurrent }} />
     ) : (
-      CardView({ Box, Text }, r, now, frame, dark)
+      CardView({ Box, Text }, r, now, 0, dark)
     )
 
   // A section: its header, and under it its cards unless it is folded. The header is bold and

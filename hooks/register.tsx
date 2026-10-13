@@ -7,21 +7,16 @@ import type { Entry, Head, Kind, Meta, Status } from './rows'
 import type { Row } from '../types'
 
 const PANE = 'recent-sessions'
-// scan often enough that a finished session leaves the Working now section promptly
-const REFRESH_MS = 5_000
-// Each spinner step repaints the whole pane, buttons included, so a fast spinner makes the
-// fold arrows flicker. This is slow enough to stay calm and still read as turning; the elapsed
-// time on a running card changes every second, so the pane is repainted at least that often.
-const SPIN_MS = 400
+// The cards tell time in minutes ("1m ago", "1h ago"), so a scan a minute keeps them true. A
+// session that starts or finishes moves section within a minute; a running card counts its
+// own seconds.
+const REFRESH_MS = 60_000
 const rows = atom({ plugin: 'recent-sessions', key: 'rows' } as const, [])
-const frame = atom({ plugin: 'recent-sessions', key: 'frame' } as const, 0)
 // which sections are folded away; kept in $.store as well, so the choices outlive the session
 const collapsed = atom({ plugin: 'recent-sessions', key: 'collapsed' } as const, {})
 const FOLDS_KEY = 'collapsedSections'
 // what an earlier version saved, when only the Offline section could fold
 const LEGACY_OFFLINE_KEY = 'offlineCollapsed'
-// the spinner only turns while a session is running; a reload resets this and the next scan sets it
-let spinning = false
 // whether the person's theme is a dark one, which the card tints need; read with each scan,
 // and false (no tints) until it is known or where the setting cannot be read
 let dark = false
@@ -138,12 +133,12 @@ async function refresh($: EngineInterface) {
   }
   const current = await $.session.id()
   const built = buildRows(entries, now, current)
-  spinning = built.some(r => r.status === 'running')
   const theme = (await $.config.list().catch(() => [])).find(row => row.key === 'theme')?.value
   dark = typeof theme === 'string' && theme.startsWith('dark')
-  // a repaint only when what is listed has changed: the same rows again would redraw the pane
-  // every scan for nothing
+  // the rows are written only when they changed; otherwise the pane is still drawn again, once
+  // a scan, so its "ago" times move on
   if (JSON.stringify(await read($, rows)) !== JSON.stringify(built)) await update($, rows, () => built)
+  else $.ui.invalidate('ui.render')
 }
 
 // Folds or unfolds one section, and keeps every section's choice for the next session.
@@ -178,9 +173,6 @@ export const register: Register = on => {
     const tick = () => void refresh($).catch(() => {})
     tick()
     $.clock.every(REFRESH_MS, tick)
-    $.clock.every(SPIN_MS, () => {
-      if (spinning) void update($, frame, n => (n ?? 0) + 1).catch(() => {})
-    })
     void $.ui.open({ id: PANE, title: 'Sessions' })
 
     return next(e)
@@ -208,10 +200,9 @@ export const register: Register = on => {
 
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
     const list = await read($, rows)
-    const turn = await read($, frame)
     const folds = await read($, collapsed)
 
-    return Cards($.ui.resolve(e), list, await $.clock.now(), turn, dark, folds, section => void toggleSection($, section).catch(() => {}),
+    return Cards($.ui.resolve(e), list, await $.clock.now(), dark, folds, section => void toggleSection($, section).catch(() => {}),
     )
   })
 }

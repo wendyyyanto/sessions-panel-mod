@@ -25,6 +25,6 @@ export type Folds = Partial<Record<Row['status'], boolean>>
 
 declare module 'claude-code' {
   interface PluginState {
-    'recent-sessions': { rows: Row[]; frame: number; collapsed: Folds }
+    'recent-sessions': { rows: Row[]; collapsed: Folds }
   }
 }

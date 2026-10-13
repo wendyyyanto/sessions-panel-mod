@@ -257,10 +257,9 @@ test('waiting, running and finished sessions each get their section', async (eng
     }
     // the four sections' tints are four different colours
     expect(new Set(cards.map(c => c.props?.backgroundColor)).size).toBe(4)
-    // each card whose session the app has an id for is a region that opens it when clicked,
-    // except the one the person is in (b2): w6's id would not pass the app's own check and stale
-    // has none, so those two are drawn plain as well
-    expect(await clientKeys(ui)).toEqual(['card-w5', 'card-a1', 'card-d4', 'card-c3'])
+    // every card is a region of its own, so a running one turns its spinner without repainting
+    // the pane (which ones open anything is tested with the clicks)
+    expect(await clientKeys(ui)).toEqual(['card-w5', 'card-w6', 'card-a1', 'card-d4', 'card-b2', 'card-c3', 'card-stale'])
     // every colour on screen is a Claude palette colour, or a faint wash of one for a card fill
     const allowed = new Set<string>([...Object.values(CLAUDE), ...[ROLE.waiting, ROLE.running, ROLE.done, ROLE.offline].map(c => wash(c))])
     expect(paints(await full(ui)).filter(c => !allowed.has(c))).toEqual([])
@@ -327,14 +326,14 @@ test('a session whose turn ended drops out of Working now into the default list'
       props: {} as never,
     })
     // no section headers, no spinner: just the card, as done
-    expect(layout(await ui.drawn())).toEqual(['header', 'a1'])
-    expect(await ui.find({ text: 'Finished one' })).toBeDefined()
-    expect(await ui.find({ text: '1 session' })).toBeDefined()
-    expect(await ui.find({ text: '1 sessions' })).toBeUndefined()
-    expect(await ui.find({ text: 'just now' })).toBeDefined()
-    expect(await ui.find({ text: 'Working now' })).toBeUndefined()
-    expect(await ui.find({ text: SPIN_FIRST })).toBeUndefined()
-    expect(await ui.find({ text: 'running' })).toBeUndefined()
+    expect(layout(await full(ui))).toEqual(['header', 'a1'])
+    expect(await find(ui, { text: 'Finished one' })).toBeDefined()
+    expect(await find(ui, { text: '1 session' })).toBeDefined()
+    expect(await find(ui, { text: '1 sessions' })).toBeUndefined()
+    expect(await find(ui, { text: 'just now' })).toBeDefined()
+    expect(await find(ui, { text: 'Working now' })).toBeUndefined()
+    expect(await find(ui, { text: SPIN_FIRST })).toBeUndefined()
+    expect(await find(ui, { text: 'running' })).toBeUndefined()
   }
 })
 
@@ -379,16 +378,16 @@ test('a session leaves Waiting for response once the person answers', async (eng
       requestId: 'recent-sessions',
       props: {} as never,
     })
-    expect(layout(await ui.drawn())).toEqual(['header', 'a1'])
-    expect(await ui.find({ text: 'Waiting for response' })).toBeUndefined()
-    expect(await ui.find({ text: '◆' })).toBeUndefined()
-    expect(await ui.find({ text: '5m ago' })).toBeDefined()
-    expect(await ui.find({ text: '1 session' })).toBeDefined()
+    expect(layout(await full(ui))).toEqual(['header', 'a1'])
+    expect(await find(ui, { text: 'Waiting for response' })).toBeUndefined()
+    expect(await find(ui, { text: '◆' })).toBeUndefined()
+    expect(await find(ui, { text: '5m ago' })).toBeDefined()
+    expect(await find(ui, { text: '1 session' })).toBeDefined()
   }
 })
 
 test('the spinner advances while a session is running', async (eng, on) => {
-  const clock = mock.clock(on, { now: 1_000_000_000 })
+  mock.clock(on, { now: 1_000_000_000 })
   mock.env(on, { USERPROFILE: 'C:/h', APPDATA: 'C:/a' })
   on('session.id', async () => ({ value: 'nobody' }))
   on('ui.open', async () => ({ value: { isPlaced: true } }))
@@ -420,19 +419,22 @@ test('the spinner advances while a session is running', async (eng, on) => {
 
   await eng.session.start({ source: 'startup', cwd: 'D:/Projects/x' } as never)
   const ui = await eng.ui.mount({ plugin: 'recent-sessions', surface: 'terminal', component: 'Pane', requestId: 'recent-sessions', props: {} as never })
-  expect(await ui.find({ text: 'Working now · 1 session' })).toBeDefined()
-  expect(await ui.find({ type: 'Text', text: SPIN_FIRST })).toBeDefined()
+  expect(await find(ui, { text: 'Working now · 1 session' })).toBeDefined()
+  expect(await find(ui, { type: 'Text', text: SPIN_FIRST })).toBeDefined()
+  const pane = JSON.stringify(await ui.drawn())
 
-  // one spinner step later (400ms)
-  await clock.advance(410)
-  expect(await ui.find({ type: 'Text', text: '⠙' })).toBeDefined()
-  expect(await ui.find({ type: 'Text', text: SPIN_FIRST })).toBeUndefined()
+  // one spinner step later (100ms), on the card's own frame clock
+  await ui.advance(110)
+  expect(await find(ui, { type: 'Text', text: '⠙' })).toBeDefined()
+  expect(await find(ui, { type: 'Text', text: SPIN_FIRST })).toBeUndefined()
 
   // the time counts up with the clock: five seconds in, then two more seconds on
-  expect(await ui.find({ type: 'Text', text: 'running · 5s' })).toBeDefined()
-  await clock.advance(2_000)
-  expect(await ui.find({ type: 'Text', text: 'running · 7s' })).toBeDefined()
-  expect(await ui.find({ type: 'Text', text: 'running · 5s' })).toBeUndefined()
+  expect(await find(ui, { type: 'Text', text: 'running · 5s' })).toBeDefined()
+  await ui.advance(2_000)
+  expect(await find(ui, { type: 'Text', text: 'running · 7s' })).toBeDefined()
+  expect(await find(ui, { type: 'Text', text: 'running · 5s' })).toBeUndefined()
+  // all of that turned inside the card: the pane around it, fold arrows and all, is unchanged
+  expect(JSON.stringify(await ui.drawn())).toBe(pane)
 })
 
 test('with nothing in the last hour, only the Offline section lists sessions', async (eng, on) => {
@@ -469,17 +471,17 @@ test('with nothing in the last hour, only the Offline section lists sessions', a
       requestId: 'recent-sessions',
       props: {} as never,
     })
-    expect(await ui.find({ text: 'Sessions in the last hour' })).toBeDefined()
-    expect(await ui.find({ text: '0 sessions' })).toBeDefined()
-    expect(await ui.find({ text: 'Nothing active in the last hour.' })).toBeDefined()
+    expect(await find(ui, { text: 'Sessions in the last hour' })).toBeDefined()
+    expect(await find(ui, { text: '0 sessions' })).toBeDefined()
+    expect(await find(ui, { text: 'Nothing active in the last hour.' })).toBeDefined()
     // the count carries the word, plural for two
-    expect(await ui.find({ text: 'Offline - Last 5 Hour · 2 sessions' })).toBeDefined()
-    expect(await ui.find({ text: 'Gone quiet' })).toBeDefined()
-    expect(await ui.find({ text: 'Gone quiet too' })).toBeDefined()
-    expect(await ui.find({ text: '1h ago' })).toBeDefined()
-    expect(await ui.find({ text: '2h ago' })).toBeDefined()
+    expect(await find(ui, { text: 'Offline - Last 5 Hour · 2 sessions' })).toBeDefined()
+    expect(await find(ui, { text: 'Gone quiet' })).toBeDefined()
+    expect(await find(ui, { text: 'Gone quiet too' })).toBeDefined()
+    expect(await find(ui, { text: '1h ago' })).toBeDefined()
+    expect(await find(ui, { text: '2h ago' })).toBeDefined()
     // the Recent subheading only appears beside another section's cards
-    expect(await ui.find({ text: 'Recent' })).toBeUndefined()
+    expect(await find(ui, { text: 'Recent' })).toBeUndefined()
   }
 })
 
@@ -542,16 +544,16 @@ test('a resumed session is listed once, and sessions without a real title are no
       props: {} as never,
     })
     // the resumed session once, not twice; a terminal session without a record stays
-    expect(layout(await ui.drawn())).toEqual(['header', 'a1', 'term'])
-    expect(await ui.findAll({ type: 'Text', text: 'Main session' })).toHaveLength(1)
-    expect(await ui.find({ text: 'Terminal session' })).toBeDefined()
-    expect(await ui.find({ text: '2 sessions' })).toBeDefined()
+    expect(layout(await full(ui))).toEqual(['header', 'a1', 'term'])
+    expect(await findAll(ui, { type: 'Text', text: 'Main session' })).toHaveLength(1)
+    expect(await find(ui, { text: 'Terminal session' })).toBeDefined()
+    expect(await find(ui, { text: '2 sessions' })).toBeDefined()
     // no orphaned desktop transcript, and nothing titled with an id: neither the headless
     // run nor the unreadable one is drawn
-    expect(await ui.find({ text: 'Orphan session' })).toBeUndefined()
-    expect(await ui.find({ text: 'blank' })).toBeUndefined()
-    expect(await ui.find({ text: 'big' })).toBeUndefined()
-    expect(await ui.find({ text: 'p0' })).toBeUndefined()
+    expect(await find(ui, { text: 'Orphan session' })).toBeUndefined()
+    expect(await find(ui, { text: 'blank' })).toBeUndefined()
+    expect(await find(ui, { text: 'big' })).toBeUndefined()
+    expect(await find(ui, { text: 'p0' })).toBeUndefined()
   }
 })
 
@@ -596,9 +598,9 @@ test('a single session in a section reads as 1 session', async (eng, on) => {
       requestId: 'recent-sessions',
       props: {} as never,
     })
-    expect(await ui.find({ text: 'Waiting for response · 1 session' })).toBeDefined()
-    expect(await ui.find({ text: 'Recent · 1 session' })).toBeDefined()
-    expect(await ui.find({ text: '1 sessions' })).toBeUndefined()
+    expect(await find(ui, { text: 'Waiting for response · 1 session' })).toBeDefined()
+    expect(await find(ui, { text: 'Recent · 1 session' })).toBeDefined()
+    expect(await find(ui, { text: '1 sessions' })).toBeUndefined()
   }
 })
 
@@ -634,7 +636,7 @@ test('on a light theme the cards keep their coloured borders but get no tint', a
       requestId: 'recent-sessions',
       props: {} as never,
     })
-    const cards = ((await ui.drawn()) as unknown as { children: Child[] }).children.filter(c => c?.props?.borderStyle)
+    const cards = ((await full(ui)) as unknown as { children: Child[] }).children.filter(c => c?.props?.borderStyle)
     expect(cards.map(c => [c.props?.key, c.props?.borderColor, c.props?.backgroundColor])).toEqual([['a1', ROLE.running, undefined]])
   }
 })
@@ -704,8 +706,8 @@ test('each section folds on its own arrow, and every choice is remembered', asyn
       props: {} as never,
     })
     const cardKeys = async () =>
-      ((await ui.drawn()) as unknown as { children: Child[] }).children.filter(c => c?.props?.borderStyle).map(c => c.props?.key)
-    const arrows = async (arrow: string) => (await ui.findAll({ type: 'Button', text: arrow })).length
+      ((await full(ui)) as unknown as { children: Child[] }).children.filter(c => c?.props?.borderStyle).map(c => c.props?.key)
+    const arrows = async (arrow: string) => (await findAll(ui, { type: 'Button', text: arrow })).length
     // the key and the folded sections of the latest write: a section already unfolded by an
     // earlier surface is saved as false, which means the same as absent
     const lastWrite = () => {
@@ -725,7 +727,7 @@ test('each section folds on its own arrow, and every choice is remembered', asyn
     // are saved after each press
     await ui.press({ key: 'waiting-toggle' })
     expect(await cardKeys()).toEqual(['a1', 'c3', 'o2', 'o3'])
-    expect(await ui.find({ text: 'Waiting for response · 1 session' })).toBeDefined()
+    expect(await find(ui, { text: 'Waiting for response · 1 session' })).toBeDefined()
     expect(await arrows('▸')).toBe(1)
     expect(lastWrite()).toEqual(['collapsedSections', { waiting: true }])
 
@@ -738,10 +740,10 @@ test('each section folds on its own arrow, and every choice is remembered', asyn
     // Working now has no arrow and stays open
     expect(await cardKeys()).toEqual(['a1'])
     expect(lastWrite()).toEqual(['collapsedSections', { waiting: true, done: true, offline: true }])
-    expect(layout(await ui.drawn())).toEqual(['header', 'waiting-header', 'running-header', 'a1', 'done-header', 'offline-header'])
+    expect(layout(await full(ui))).toEqual(['header', 'waiting-header', 'running-header', 'a1', 'done-header', 'offline-header'])
     expect(await arrows('▸')).toBe(3)
     expect(await arrows('▾')).toBe(0)
-    expect(await ui.find({ text: 'Offline - Last 5 Hour · 2 sessions' })).toBeDefined()
+    expect(await find(ui, { text: 'Offline - Last 5 Hour · 2 sessions' })).toBeDefined()
 
     // pressing them again opens each, and the saved choices follow
     for (const section of ['waiting', 'done', 'offline']) await ui.press({ key: `${section}-toggle` })
@@ -805,18 +807,18 @@ test('saved choices are restored in the next session, including the older Offlin
       requestId: 'recent-sessions',
       props: {} as never,
     })
-    const cardKeys = ((await ui.drawn()) as unknown as { children: Child[] }).children.filter(c => c?.props?.borderStyle).map(c => c.props?.key)
+    const cardKeys = ((await full(ui)) as unknown as { children: Child[] }).children.filter(c => c?.props?.borderStyle).map(c => c.props?.key)
     // Waiting (saved) and Offline (the older value) start folded; Working now stays open
     // whatever was saved, and Recent is open
     expect(cardKeys).toEqual(['a1', 'c3'])
-    expect((await ui.findAll({ type: 'Button', text: '▸' })).length).toBe(2)
-    expect((await ui.findAll({ type: 'Button', text: '▾' })).length).toBe(1)
-    expect(await ui.find({ key: 'running-toggle' })).toBeUndefined()
-    expect(await ui.find({ text: 'Working now · 1 session' })).toBeDefined()
-    expect(await ui.find({ text: 'Waiting for response · 1 session' })).toBeDefined()
-    expect(await ui.find({ text: 'Offline - Last 5 Hour · 1 session' })).toBeDefined()
-    expect(await ui.find({ text: 'Asked one' })).toBeUndefined()
-    expect(await ui.find({ text: 'Offline one' })).toBeUndefined()
+    expect((await findAll(ui, { type: 'Button', text: '▸' })).length).toBe(2)
+    expect((await findAll(ui, { type: 'Button', text: '▾' })).length).toBe(1)
+    expect(await find(ui, { key: 'running-toggle' })).toBeUndefined()
+    expect(await find(ui, { text: 'Working now · 1 session' })).toBeDefined()
+    expect(await find(ui, { text: 'Waiting for response · 1 session' })).toBeDefined()
+    expect(await find(ui, { text: 'Offline - Last 5 Hour · 1 session' })).toBeDefined()
+    expect(await find(ui, { text: 'Asked one' })).toBeUndefined()
+    expect(await find(ui, { text: 'Offline one' })).toBeUndefined()
   }
 })
 
@@ -860,16 +862,16 @@ test('a folded Recent section keeps its header even when it is the only section'
   }
   for (const ui of views) {
     // alone, Recent has no header, but folded it must keep one or its card could not be reopened
-    expect(layout(await ui.drawn())).toEqual(['header', 'done-header'])
-    expect(await ui.find({ text: 'Recent · 1 session' })).toBeDefined()
-    expect(await ui.find({ text: 'Finished one' })).toBeUndefined()
+    expect(layout(await full(ui))).toEqual(['header', 'done-header'])
+    expect(await find(ui, { text: 'Recent · 1 session' })).toBeDefined()
+    expect(await find(ui, { text: 'Finished one' })).toBeUndefined()
   }
 
   // one press unfolds it, for every view of the pane; alone and open again, the header goes away
   await views[0]?.press({ key: 'done-toggle' })
   for (const ui of views) {
-    expect(await ui.find({ text: 'Finished one' })).toBeDefined()
-    expect(layout(await ui.drawn())).toEqual(['header', 'c3'])
+    expect(await find(ui, { text: 'Finished one' })).toBeDefined()
+    expect(layout(await full(ui))).toEqual(['header', 'c3'])
   }
 })
 
@@ -906,9 +908,9 @@ test('a running session too big to read has no start time, so it says plain "run
       props: {} as never,
     })
     // fresh and unreadable: it counts as running, but nothing says when its turn began
-    expect(await ui.find({ text: 'Working now · 1 session' })).toBeDefined()
-    expect(await ui.find({ type: 'Text', text: 'running' })).toBeDefined()
-    expect(await ui.find({ text: 'running · ' })).toBeUndefined()
+    expect(await find(ui, { text: 'Working now · 1 session' })).toBeDefined()
+    expect(await find(ui, { type: 'Text', text: 'running' })).toBeDefined()
+    expect(await find(ui, { text: 'running · ' })).toBeUndefined()
   }
 })
 
@@ -983,18 +985,18 @@ test('a session that was only opened is not recent, or running, just because its
     // Working now: only the big session the app saw run 90 seconds ago, and it says plain "running";
     // Recent: only the one that really ran 2 minutes ago; Offline: the three that were just opened,
     // newest run first, each with the time it last RAN, not the minute it was opened
-    expect(layout(await ui.drawn())).toEqual(['header', 'running-header', 'l5', 'done-header', 'r4', 'offline-header', 'o1', 'b3', 'o2'])
-    expect(await ui.find({ text: 'Working now · 1 session' })).toBeDefined()
-    expect(await ui.find({ text: 'Recent · 1 session' })).toBeDefined()
-    expect(await ui.find({ text: 'Offline - Last 5 Hour · 3 sessions' })).toBeDefined()
-    expect(await ui.findAll({ type: 'Text', text: '3h ago' })).toHaveLength(3)
-    expect(await ui.find({ type: 'Text', text: '2m ago' })).toBeDefined()
+    expect(layout(await full(ui))).toEqual(['header', 'running-header', 'l5', 'done-header', 'r4', 'offline-header', 'o1', 'b3', 'o2'])
+    expect(await find(ui, { text: 'Working now · 1 session' })).toBeDefined()
+    expect(await find(ui, { text: 'Recent · 1 session' })).toBeDefined()
+    expect(await find(ui, { text: 'Offline - Last 5 Hour · 3 sessions' })).toBeDefined()
+    expect(await findAll(ui, { type: 'Text', text: '3h ago' })).toHaveLength(3)
+    expect(await find(ui, { type: 'Text', text: '2m ago' })).toBeDefined()
     // the header counts the last hour only: the two that ran in it
-    expect(await ui.find({ text: '2 sessions' })).toBeDefined()
+    expect(await find(ui, { text: '2 sessions' })).toBeDefined()
     // none of them reads as "just now", though every file was written to 10 seconds ago
-    expect(await ui.find({ text: 'just now' })).toBeUndefined()
+    expect(await find(ui, { text: 'just now' })).toBeUndefined()
     // the opened session whose turn was left unfinished is not running
-    expect(await ui.findAll({ type: 'Text', text: 'running' })).toHaveLength(1)
+    expect(await findAll(ui, { type: 'Text', text: 'running' })).toHaveLength(1)
   }
 })
 
@@ -1043,7 +1045,7 @@ test('running sessions wear Claude\'s main brand orange, the one you are in incl
     expect(ROLE.running).toBe('#D97757')
     expect(ROLE.running).toBe(CLAUDE.clay)
 
-    const tree = await ui.drawn()
+    const tree = await full(ui)
     const coloured = texts(tree)
     // the spinner, the elapsed time and the section header are all that orange
     const spinners = coloured.filter(t => t.text === SPIN_FIRST)
@@ -1056,7 +1058,7 @@ test('running sessions wear Claude\'s main brand orange, the one you are in incl
 
     // the cards: both borders are the orange; the current session's is the heavier line, and
     // leads the section, but is not a different colour
-    const cards = ((await ui.drawn()) as unknown as { children: Child[] }).children.filter(c => c?.props?.borderStyle)
+    const cards = ((await full(ui)) as unknown as { children: Child[] }).children.filter(c => c?.props?.borderStyle)
     expect(cards.map(c => [c.props?.key, c.props?.borderStyle, c.props?.borderColor, c.props?.backgroundColor])).toEqual([
       ['a1', 'bold', ROLE.running, wash(ROLE.running)],
       ['d4', 'round', ROLE.running, wash(ROLE.running)],
@@ -1166,9 +1168,12 @@ test('clicking anywhere on a card opens that session, but not the one you are in
     })
     desktop = ui
     g.__runs = []
-    // a card with an app id to open is a clickable region; the session you are in, and the one
-    // whose id the app would not accept, are plain cards with nothing to click
-    expect(await clientKeys(ui)).toEqual(['card-a1', 'card-d4'])
+    // every card is a region, but the session you are in, and the one whose id the app would
+    // not accept, open nothing when clicked
+    expect(await clientKeys(ui)).toEqual(['card-c9', 'card-a1', 'card-d4', 'card-b2'])
+    await click(ui, 'card-c9')
+    await click(ui, 'card-b2')
+    expect(g.__runs).toEqual([])
     // the region draws the same card: its title, folder, status and border are all there
     expect(await find(ui, { text: 'Openable one' })).toBeDefined()
     const drawn = (await ui.drawn({ in: 'card-a1' })) as Child
@@ -1290,4 +1295,40 @@ test('a click that fails to open tells the person, whether the command ran badly
   expect(g.__toasts).toEqual(['Could not open that session'])
   await click(ui, 'card-a1')
   expect(g.__toasts).toEqual(['Could not open that session', 'Could not open that session'])
+})
+
+// The scan runs once a minute, and every scan redraws the pane, so "5m ago" reads "6m ago" a
+// minute on even though nothing in the list changed.
+test('the time labels move on with each one-minute scan', async (eng, on) => {
+  const clock = mock.clock(on, { now: 1_000_000_000 })
+  mock.env(on, { USERPROFILE: 'C:/h', APPDATA: 'C:/a' })
+  on('session.id', async () => ({ value: 'nobody' }))
+  on('ui.open', async () => ({ value: { isPlaced: true } }))
+  on('command.register', async () => ({ value: undefined }) as never)
+  on('session.start', async (_$, e) => e)
+  on('fs.list', async (_$, e) => {
+    const dir = (name: string) => ({ name, kind: 'dir' as const, size: 0, mtimeMs: 0, isLink: false })
+    const file = (name: string, size: number, mtimeMs: number) => ({ name, kind: 'file' as const, size, mtimeMs, isLink: false })
+    if (e.path.endsWith('projects')) return { value: [dir('proj')] }
+    if (e.path.endsWith('claude-code-sessions')) return { value: [dir('acct')] }
+    if (e.path.endsWith('acct')) return { value: [dir('org')] }
+    if (e.path.endsWith('org')) return { value: [file('local_1.json', 100, 5)] }
+
+    return { value: [file('a1.jsonl', 300_000, 999_700_000)] }
+  })
+  on('fs.read', async (_$, e) =>
+    e.path.endsWith('local_1.json')
+      ? { value: JSON.stringify({ cliSessionId: 'a1', title: 'Quiet one', cwd: 'D:/Projects/x', model: 'claude-opus-5-5', isArchived: false }) }
+      : { value: JSON.stringify({ type: 'assistant', message: { role: 'assistant', stop_reason: 'end_turn' } }) },
+  )
+
+  await eng.session.start({ source: 'startup', cwd: 'D:/Projects/x' } as never)
+  const ui = await eng.ui.mount({ plugin: 'recent-sessions', surface: 'terminal', component: 'Pane', requestId: 'recent-sessions', props: {} as never })
+  expect(await find(ui, { text: '5m ago' })).toBeDefined()
+  // under a minute on, no scan has run yet
+  await clock.advance(50_000)
+  expect(await find(ui, { text: '5m ago' })).toBeDefined()
+  await clock.advance(10_000)
+  expect(await find(ui, { text: '6m ago' })).toBeDefined()
+  expect(await find(ui, { text: '5m ago' })).toBeUndefined()
 })
