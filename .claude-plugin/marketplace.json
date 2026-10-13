@@ -1,0 +1,12 @@
+{
+	"name": "sessions-panel-mod",
+	"description": "A side pane that lists your Claude Code sessions and what each one is doing: waiting for your reply, working now, finished recently, or gone quiet. Click a card to jump to that session in the desktop app. It is a mod for Claude Code and the Claude desktop app's Code tab.",
+	"owner": { "name": "wendyyyanto" },
+	"plugins": [
+		{
+			"name": "recent-sessions",
+			"source": "./",
+			"description": "A side pane listing your Claude Code sessions, with a click to open any of them in the desktop app."
+		}
+	]
+}
