@@ -11,6 +11,12 @@ const PANE = 'recent-sessions'
 // session that starts or finishes moves section within a minute; a running card counts its
 // own seconds.
 const REFRESH_MS = 60_000
+// While a session is running its card counts up by itself, so a turn that ends keeps counting
+// until the next scan finds it done; a scan this often while one runs ends that within seconds.
+// A scan re-reads only the transcripts that changed, so the extra scans are cheap.
+const RUNNING_REFRESH_MS = 5_000
+// when the last scan began, so the 5s clock can skip itself while nothing is running
+let lastScan = 0
 const rows = atom({ plugin: 'recent-sessions', key: 'rows' } as const, [])
 // which sections are folded away; kept in $.store as well, so the choices outlive the session
 const collapsed = atom({ plugin: 'recent-sessions', key: 'collapsed' } as const, {})
@@ -63,6 +69,7 @@ async function refresh($: EngineInterface) {
   const base = (await $.env.get('CLAUDE_CONFIG_DIR')) ?? `${home}/.claude`
   const root = `${base}/projects`
   const now = await $.clock.now()
+  lastScan = now
   const { index, superseded } = await desktopIndex($, home)
   const entries: Entry[] = []
   for (const dir of await $.fs.list(root)) {
@@ -170,10 +177,15 @@ export const register: Register = on => {
     const saved = parseFolds(await $.store.get(FOLDS_KEY).catch(() => undefined), await $.store.get(LEGACY_OFFLINE_KEY).catch(() => undefined))
     if (Object.keys(saved).length > 0) await update($, collapsed, () => saved)
     // a stale list beats a toast every 30 seconds, so a failed scan is dropped
-    const tick = () => void refresh($).catch(() => {})
+    const tick = async () => {
+      const now = await $.clock.now()
+      const running = (await read($, rows)).some(row => row.status === 'running')
+      if (!running && now - lastScan < REFRESH_MS) return
+      await refresh($)
+    }
     // the pane opens by itself only when there is something to list; /sessions opens it otherwise
     await refresh($).catch(() => {})
-    $.clock.every(REFRESH_MS, tick)
+    $.clock.every(RUNNING_REFRESH_MS, () => void tick().catch(() => {}))
     if ((await read($, rows)).length > 0) void $.ui.open({ id: PANE, title: 'Sessions' })
 
     return next(e)

@@ -1434,3 +1434,58 @@ test('the pane opens at session start only when a session is listed', async (eng
   await eng.session.start({ source: 'startup', cwd: 'D:/Projects/x' } as never)
   expect(g.__opened).toBe(1)
 })
+
+// A running card counts up by itself, so a turn that ended must be noticed soon: while
+// something runs the list is scanned every few seconds, not once a minute.
+test('a session that finishes while the pane is open stops reading as running within seconds', async (eng, on) => {
+  const clock = mock.clock(on, { now: 1_000_000_000 })
+  mock.env(on, { USERPROFILE: 'C:/h', APPDATA: 'C:/a' })
+  const g = globalThis as unknown as { __ended?: boolean }
+  g.__ended = false
+  on('session.id', async () => ({ value: 'a1' }))
+  on('ui.open', async () => ({ value: { isPlaced: true } }))
+  on('ui.panes', async () => ({ value: [] }) as never)
+  on('command.register', async () => ({ value: undefined }) as never)
+  on('session.start', async (_$, e) => e)
+  on('fs.list', async (_$, e) => {
+    const dir = (name: string) => ({ name, kind: 'dir' as const, size: 0, mtimeMs: 0, isLink: false })
+    const file = (name: string, size: number, mtimeMs: number) => ({ name, kind: 'file' as const, size, mtimeMs, isLink: false })
+    if (e.path.endsWith('projects')) return { value: [dir('proj')] }
+    if (e.path.endsWith('claude-code-sessions')) return { value: [dir('acct')] }
+    if (e.path.endsWith('acct')) return { value: [dir('org')] }
+    if (e.path.endsWith('org')) return { value: [file('local_1.json', 100, 5)] }
+
+    // the transcript grows when the turn ends
+    const ended = (globalThis as unknown as { __ended: boolean }).__ended
+
+    return { value: [file('a1.jsonl', ended ? 2_000_100 : 2_000_000, 999_999_000)] }
+  })
+  on('fs.read', async (_$, e) => {
+    if (e.path.endsWith('local_1.json')) {
+      return { value: JSON.stringify({ cliSessionId: 'a1', title: 'Just finished', cwd: 'D:/Projects/x', model: 'claude-opus-5-5', isArchived: false }) }
+    }
+    const ended = (globalThis as unknown as { __ended: boolean }).__ended
+    const stop_reason = ended ? 'end_turn' : 'tool_use'
+    const content = ended ? [{ type: 'text', text: 'done' }] : [{ type: 'tool_use', name: 'Bash' }]
+
+    return {
+      value: [
+        { type: 'user', timestamp: new Date(1_000_000_000 - 5_000).toISOString(), message: { role: 'user', content: 'go' } },
+        { type: 'assistant', message: { role: 'assistant', stop_reason, content } },
+      ]
+        .map(line => JSON.stringify(line))
+        .join(String.fromCharCode(10)),
+    }
+  })
+
+  await eng.session.start({ source: 'startup', cwd: 'D:/Projects/x' } as never)
+  const ui = await eng.ui.mount({ plugin: 'recent-sessions', surface: 'terminal', component: 'Pane', requestId: 'recent-sessions', props: {} as never })
+  expect(await find(ui, { text: 'Working now · 1 session' })).toBeDefined()
+
+  g.__ended = true
+  await clock.advance(5_000)
+  expect(await find(ui, { text: 'Working now · 1 session' })).toBeUndefined()
+  expect(await find(ui, { text: 'Recent · 1 session' })).toBeUndefined()
+  expect(await findAll(ui, { type: 'Text', text: 'running' })).toHaveLength(0)
+  expect(await find(ui, { text: 'just now' })).toBeDefined()
+})
