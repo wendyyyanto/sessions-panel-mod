@@ -220,6 +220,9 @@ test('waiting, running and finished sessions each get their section', async (eng
     expect(await find(ui, { type: 'Text', text: 'running · 2m 14s' })).toBeDefined()
     expect(await find(ui, { type: 'Text', text: 'running · 45s' })).toBeDefined()
     expect(await findAll(ui, { type: 'Text', text: '◆' })).toHaveLength(2)
+    // the filled dot is only the open session's (b2); the other finished and offline cards get a hollow one
+    expect(await findAll(ui, { type: 'Text', text: '●' })).toHaveLength(1)
+    expect(await findAll(ui, { type: 'Text', text: '○' })).toHaveLength(2)
     // the heavy border marks the current session; there is no header text on any card
     const cards = ((await full(ui)) as unknown as { children: Child[] }).children.filter(c => c?.props?.borderStyle)
     // each section has its own border colour; the current session (b2) has its section's, in a

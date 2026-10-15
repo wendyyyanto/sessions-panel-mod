@@ -47,7 +47,8 @@ export function CardView(
   const age = now - r.ranAt
   const state = stateOf(age, r.status)
   const tone = TONE[state]
-  const glyph = state === 'waiting' ? '◆' : state === 'working' ? SPINNER[frame % SPINNER.length] : state === 'idle' ? '○' : '●'
+  // the filled dot marks the session the person has open, however recently any session ran
+  const glyph = state === 'waiting' ? '◆' : state === 'working' ? SPINNER[frame % SPINNER.length] : r.isCurrent ? '●' : '○'
   const label =
     state === 'waiting'
       ? `needs your reply · ${ago(age)}`

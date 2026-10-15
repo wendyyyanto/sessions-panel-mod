@@ -15,7 +15,7 @@ The pane is titled **Sessions** and opens on the right when a session starts, bu
 
 Each session is a card with:
 
-- **A status mark:** `◆` waiting, a spinner while working, `●` recent, `○` offline.
+- **A status mark:** `◆` waiting, a spinner while working, `●` the session you are in, `○` any other finished or offline session.
 - **Title:** the session's name from the desktop app, or the name you gave it with a custom title.
 - **Project folder,** or `No Project` for a session started without one.
 - **Model and effort,** for example `opus-5-5 · high` (desktop app sessions only).
