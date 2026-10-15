@@ -1,6 +1,6 @@
 {
 	"name": "recent-sessions",
-	"version": "0.1.5",
+	"version": "0.1.6",
 	"description": "A side pane that lists your Claude Code sessions and what each one is doing: waiting for your reply, working now, finished recently, or gone quiet. Click a card to jump to that session in the desktop app. It is a mod for Claude Code and the Claude desktop app's Code tab.",
 	"author": { "name": "wendyyyanto" },
 	"license": "MIT",
