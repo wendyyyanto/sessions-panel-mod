@@ -171,9 +171,10 @@ export const register: Register = on => {
     if (Object.keys(saved).length > 0) await update($, collapsed, () => saved)
     // a stale list beats a toast every 30 seconds, so a failed scan is dropped
     const tick = () => void refresh($).catch(() => {})
-    tick()
+    // the pane opens by itself only when there is something to list; /sessions opens it otherwise
+    await refresh($).catch(() => {})
     $.clock.every(REFRESH_MS, tick)
-    void $.ui.open({ id: PANE, title: 'Sessions' })
+    if ((await read($, rows)).length > 0) void $.ui.open({ id: PANE, title: 'Sessions' })
 
     return next(e)
   })

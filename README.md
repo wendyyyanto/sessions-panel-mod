@@ -4,7 +4,7 @@ A side pane that lists your Claude Code sessions and what each one is doing: wai
 
 ## What it shows
 
-The pane is titled **Sessions** and opens on the right when a session starts. At the top, **Sessions in the last hour** and a count. Below that, up to four sections, in this order:
+The pane is titled **Sessions** and opens on the right when a session starts, but only if there is at least one session to list. At the top, **Sessions in the last hour** and a count. Below that, up to four sections, in this order:
 
 | Section | Colour | What is in it |
 | --- | --- | --- |
@@ -36,7 +36,7 @@ There is one command:
 | --- | --- |
 | `/sessions` | Toggles the Sessions pane. If the pane is on screen, it closes it. Otherwise it scans for sessions right away, opens the pane, and replies with how many sessions are listed. |
 
-The pane opens by itself when a session starts and refreshes itself every minute. Use `/sessions` to hide it, and again to bring it back with a fresh list.
+The pane opens by itself when a session starts and at least one session is listed (with none, it stays closed until you run `/sessions`), and refreshes itself every minute. Use `/sessions` to hide it, and again to bring it back with a fresh list.
 
 ## Install
 

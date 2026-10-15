@@ -1389,3 +1389,45 @@ test('/sessions closes the pane when it is on screen and opens it otherwise', as
   expect(JSON.stringify(await eng.command.run({ command: 'sessions', args: '' } as never))).toContain('Sessions pane opened')
   expect(g.__asked).toEqual(['open recent-sessions', 'close recent-sessions', 'open recent-sessions'])
 })
+
+test('the pane opens at session start only when a session is listed', async (eng, on) => {
+  mock.clock(on, { now: 1_000_000_000 })
+  mock.env(on, { USERPROFILE: 'C:/h', APPDATA: 'C:/a' })
+  const g = globalThis as unknown as { __opened?: number; __files?: unknown[] }
+  const shared = () => globalThis as unknown as { __opened: number; __files: unknown[] }
+  g.__opened = 0
+  g.__files = []
+  on('session.id', async () => ({ value: 'nobody' }))
+  on('ui.panes', async () => ({ value: [] }) as never)
+  on('command.register', async () => ({ value: undefined }) as never)
+  on('session.start', async (_$, e) => e)
+  on('ui.open', async () => {
+    shared().__opened++
+
+    return { value: { isPlaced: true } }
+  })
+  on('fs.list', async (_$, e) => {
+    const dir = (name: string) => ({ name, kind: 'dir' as const, size: 0, mtimeMs: 0, isLink: false })
+    if (e.path.endsWith('projects')) return { value: [dir('proj')] }
+
+    return { value: shared().__files } as never
+  })
+  on('fs.read', async () => ({
+    value: [
+      { type: 'custom-title', customTitle: 'Finished one' },
+      { type: 'user', cwd: 'D:/Projects/x', entrypoint: 'cli', message: { role: 'user', content: 'hi' } },
+      { type: 'assistant', message: { role: 'assistant', stop_reason: 'end_turn' } },
+    ]
+      .map(line => JSON.stringify(line))
+      .join(String.fromCharCode(10)),
+  }))
+
+  // nothing to list: the pane stays closed
+  await eng.session.start({ source: 'startup', cwd: 'D:/Projects/x' } as never)
+  expect(g.__opened).toBe(0)
+
+  // a session in the last hour: it opens
+  g.__files = [{ name: 'c3.jsonl', kind: 'file', size: 300_000, mtimeMs: 999_600_000, isLink: false }]
+  await eng.session.start({ source: 'startup', cwd: 'D:/Projects/x' } as never)
+  expect(g.__opened).toBe(1)
+})
