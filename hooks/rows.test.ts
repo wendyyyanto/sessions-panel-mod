@@ -367,13 +367,13 @@ test('buildRows: a running session never reads as offline, and an offline one st
   expect(off?.status).toBe('offline')
 })
 
-test('buildRows: pins the current session first even when it is the oldest', () => {
+test('buildRows: keeps the current session in its place by time, not first', () => {
   const entries = [
     { id: 'new', ranAt: NOW - min(1), size: 1, dir: 'd', title: 'Newest' },
     { id: 'mid', ranAt: NOW - min(10), size: 1, dir: 'd', title: 'Middle' },
     { id: 'cur', ranAt: NOW - min(50), size: 1, dir: 'd', title: 'Current' },
   ]
-  expect(buildRows(entries, NOW, 'cur').map(r => r.id)).toEqual(['cur', 'new', 'mid'])
+  expect(buildRows(entries, NOW, 'cur').map(r => r.id)).toEqual(['new', 'mid', 'cur'])
   expect(buildRows(entries, NOW, 'none').map(r => r.id)).toEqual(['new', 'mid', 'cur'])
 })
 

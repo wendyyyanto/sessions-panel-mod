@@ -77,8 +77,8 @@ const layout = (tree: unknown) =>
 test('waiting, running and finished sessions each get their section', async (eng, on) => {
   mock.clock(on, { now: 1_000_000_000 })
   mock.env(on, { USERPROFILE: 'C:/h', APPDATA: 'C:/a' })
-  // b2 is the current session and the oldest of the Recent pair: pinned first, but only
-  // within its own section
+  // b2 is the current session and the oldest of the Recent pair: it stays in its place by
+  // time, after the newer one
   on('session.id', async () => ({ value: 'b2' }))
   on('config.list', async () => ({ value: [{ key: 'theme', value: 'dark' }] }) as never)
   on('ui.open', async () => ({ value: { isPlaced: true } }))
@@ -189,8 +189,8 @@ test('waiting, running and finished sessions each get their section', async (eng
     ]) {
       expect(await find(ui, { text })).toBeDefined()
     }
-    // attention first; newest first inside a section; the current session leads Recent
-    // despite being the older one; a 3h-old waiting session is kept past the window while
+    // attention first; newest first inside a section, the current session included, so it
+    // follows the newer one in Recent; a 3h-old waiting session is kept past the window while
     // a 3h-old finished one is offline, listed last; the header counts the last hour only
     expect(layout(await full(ui))).toEqual([
       'header',
@@ -201,8 +201,8 @@ test('waiting, running and finished sessions each get their section', async (eng
       'a1',
       'd4',
       'done-header',
-      'b2',
       'c3',
+      'b2',
       'offline-header',
       'stale',
     ])
@@ -225,7 +225,7 @@ test('waiting, running and finished sessions each get their section', async (eng
     expect(await findAll(ui, { type: 'Text', text: '○' })).toHaveLength(2)
     // the filled dot is blue, and the hollow ones keep their section's colour
     const dots = texts(await full(ui)).filter(t => t.text === '●' || t.text === '○')
-    expect(dots.map(t => [t.text, t.color])).toEqual([['●', CLAUDE.sky], ['○', ROLE.done], ['○', ROLE.offline]])
+    expect(dots.map(t => [t.text, t.color])).toEqual([['○', ROLE.done], ['●', CLAUDE.sky], ['○', ROLE.offline]])
     // the heavy border marks the current session; there is no header text on any card
     const cards = ((await full(ui)) as unknown as { children: Child[] }).children.filter(c => c?.props?.borderStyle)
     // each section has its own border colour; the current session (b2) has its section's, in a
@@ -235,8 +235,8 @@ test('waiting, running and finished sessions each get their section', async (eng
       ['w6', 'round', ROLE.waiting],
       ['a1', 'round', ROLE.running],
       ['d4', 'round', ROLE.running],
-      ['b2', 'bold', ROLE.done],
       ['c3', 'round', ROLE.done],
+      ['b2', 'bold', ROLE.done],
       ['stale', 'round', ROLE.offline],
     ])
     // under the pointer a card keeps its own border colour: the hover colour of every card
@@ -250,8 +250,8 @@ test('waiting, running and finished sessions each get their section', async (eng
       ['w6', wash(ROLE.waiting)],
       ['a1', wash(ROLE.running)],
       ['d4', wash(ROLE.running)],
-      ['b2', wash(ROLE.done)],
       ['c3', wash(ROLE.done)],
+      ['b2', wash(ROLE.done)],
       ['stale', wash(ROLE.offline)],
     ])
     // ...and the tints stay faint: dark, and with little spread between their channels, so
@@ -266,7 +266,7 @@ test('waiting, running and finished sessions each get their section', async (eng
     expect(new Set(cards.map(c => c.props?.backgroundColor)).size).toBe(4)
     // every card is a region of its own, so a running one turns its spinner without repainting
     // the pane (which ones open anything is tested with the clicks)
-    expect(await clientKeys(ui)).toEqual(['card-w5', 'card-w6', 'card-a1', 'card-d4', 'card-b2', 'card-c3', 'card-stale'])
+    expect(await clientKeys(ui)).toEqual(['card-w5', 'card-w6', 'card-a1', 'card-d4', 'card-c3', 'card-b2', 'card-stale'])
     // every colour on screen is a Claude palette colour, or a faint wash of one for a card fill
     const allowed = new Set<string>([...Object.values(CLAUDE), ...[ROLE.waiting, ROLE.running, ROLE.done, ROLE.offline].map(c => wash(c))])
     expect(paints(await full(ui)).filter(c => !allowed.has(c))).toEqual([])

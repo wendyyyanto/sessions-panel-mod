@@ -22,7 +22,7 @@ Each session is a card with:
 - **Status line:** `needs your reply · 5m`, `running · 45s`, `just now`, `12m ago` or `3h ago`.
 - **Transcript size,** in KB or MB.
 
-The session you are in is pinned to the top of its section and has a heavier border. Inside each section the newest session comes first. On a dark theme each section's cards are also faintly tinted in its colour.
+The session you are in keeps its place by time and has a heavier border. Inside each section the newest session comes first. On a dark theme each section's cards are also faintly tinted in its colour.
 
 **Clicking a card** opens that session in the desktop app. A click is a press and a release on the same card. Dragging off the card or right-clicking does nothing.
 

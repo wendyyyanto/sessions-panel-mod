@@ -279,8 +279,8 @@ export function buildRows(entries: Entry[], now: number, currentId: string): Row
       const real = e.hasRecord || e.entrypoint !== 'claude-desktop'
       return listed && !e.archived && real && e.title !== undefined
     })
-    // the session the person is in is pinned first; the rest run newest first
-    .sort((a, b) => Number(b.id === currentId) - Number(a.id === currentId) || b.ranAt - a.ranAt)
+    // newest first; the session the person is in keeps its place by time
+    .sort((a, b) => b.ranAt - a.ranAt)
     .map(e => ({
       id: e.id,
       title: e.title ?? '',
