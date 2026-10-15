@@ -1,4 +1,4 @@
-import { ROLE, wash } from './palette'
+import { CLAUDE, ROLE, wash } from './palette'
 import { ago, fmtElapsed, fmtSize, stateOf } from './rows'
 import type { State } from './rows'
 import type { Row } from '../types'
@@ -77,7 +77,7 @@ export function CardView(
       {...(dark ? { backgroundColor: TINT[r.status] } : {})}
     >
       <Box gap={1}>
-        <Text color={tone}>{glyph}</Text>
+        <Text color={glyph === '●' ? CLAUDE.sky : tone}>{glyph}</Text>
         <Text bold dimColor={r.status === 'offline'} wrap="truncate-end">
           {r.title}
         </Text>
